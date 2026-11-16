@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ShopEase demo registration application for manual testing practice." />
+  <title>ShopEase | Create an account</title>
+  <style>
+    :root {
+      --ink: #182230;
+      --muted: #667085;
+      --line: #dce3ec;
+      --soft: #f5f7fb;
+      --brand: #2855c5;
+      --brand-dark: #1d429f;
+      --danger: #b42318;
+      --danger-bg: #fff1f0;
+      --success: #067647;
+      --success-bg: #ecfdf3;
+      --info-bg: #eef4ff;
+      --radius: 16px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: linear-gradient(145deg, #f4f7ff 0%, #f9fbff 45%, #eef3fa 100%);
+    }
+    button, input { font: inherit; }
+    .topbar {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 5vw, 72px);
+      background: rgba(255,255,255,.88);
+      border-bottom: 1px solid #e7ebf2;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; letter-spacing: -.4px; font-size: 21px; }
+    .brand-mark {
+      width: 35px; height: 35px; display: grid; place-items: center;
+      color: #fff; background: var(--brand); border-radius: 11px; font-weight: 900;
+      box-shadow: 0 5px 14px rgba(40,85,197,.2);
+    }
+    .top-note { color: var(--muted); font-size: 13px; }
+    main { width: min(100% - 32px, 1080px); margin: 42px auto 56px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+    .card {
+      background: #fff; border: 1px solid #e5eaf1; border-radius: var(--radius);
+      box-shadow: 0 18px 50px rgba(27, 48, 84, .07);
+    }
+    .form-card { padding: clamp(22px, 4vw, 38px); }
+    .eyebrow { margin: 0 0 9px; color: var(--brand); font-size: 11px; font-weight: 800; letter-spacing: 1.25px; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 36px); letter-spacing: -1.2px; line-height: 1.12; }
+    .intro { margin: 11px 0 25px; color: var(--muted); line-height: 1.6; font-size: 14px; }
+    .steps { display: flex; align-items: center; gap: 10px; margin: 0 0 27px; }
+    .step { display: flex; align-items: center; gap: 8px; color: #98a2b3; font-size: 12px; font-weight: 700; }
+    .step-number { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #eef1f6; color: #667085; }
+    .step.active { color: var(--brand); }
+    .step.active .step-number, .step.done .step-number { background: var(--brand); color: #fff; }
+    .step-line { flex: 0 0 36px; height: 1px; background: #e1e6ed; }
+    .section-label { margin: 0 0 14px; font-size: 13px; font-weight: 800; color: #344054; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 14px; }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label { display: block; margin-bottom: 7px; color: #344054; font-weight: 700; font-size: 12px; }
+    .required { color: var(--danger); }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="password"] {
+      display: block; width: 100%; min-height: 45px; border: 1px solid #cfd7e3; border-radius: 9px;
+      padding: 10px 12px; color: var(--ink); background: #fff; outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    input::placeholder { color: #a0a9b7; }
+    input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(40,85,197,.12); }
+    input.invalid { border-color: var(--danger); background: #fffafa; }
+    .hint { margin: 6px 0 0; color: #7b8797; font-size: 11px; line-height: 1.45; }
+    .error { min-height: 15px; margin: 5px 0 0; color: var(--danger); font-size: 11px; line-height: 1.35; }
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 67px; }
+    .toggle-password { position: absolute; right: 8px; top: 8px; border: 0; background: transparent; color: var(--brand); font-weight: 700; font-size: 11px; cursor: pointer; padding: 7px; }
+    .terms-row { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0 3px; }
+    .terms-row input { margin-top: 3px; accent-color: var(--brand); }
+    .terms-row label { margin: 0; font-size: 12px; line-height: 1.5; font-weight: 500; }
+    a, .text-button { color: var(--brand); text-decoration: none; font-weight: 700; }
+    a:hover, .text-button:hover { text-decoration: underline; }
+    .terms-error { margin-left: 24px; }
+    .primary {
+      width: 100%; min-height: 47px; margin-top: 20px; border: 0; border-radius: 9px;
+      color: white; background: var(--brand); font-weight: 800; cursor: pointer;
+      box-shadow: 0 7px 15px rgba(40,85,197,.17); transition: background .15s, transform .15s;
+    }
+    .primary:hover { background: var(--brand-dark); transform: translateY(-1px); }
+    .primary:disabled { opacity: .65; cursor: wait; transform: none; }
+    .form-note { margin: 14px 0 0; text-align: center; color: var(--muted); font-size: 12px; }
+    .side-card { padding: 25px; }
+    .side-card h2 { margin: 0 0 15px; font-size: 17px; letter-spacing: -.3px; }
+    .benefit { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid #edf0f5; }
+    .benefit-icon { flex: 0 0 32px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: #eff4ff; color: var(--brand); font-weight: 900; }
+    .benefit strong { display: block; margin: 1px 0 4px; font-size: 12px; }
+    .benefit span { display: block; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .demo-box { margin-top: 18px; padding: 14px; border-radius: 11px; background: var(--info-bg); color: #314b7d; font-size: 11px; line-height: 1.55; }
+    .demo-box strong { display: block; margin-bottom: 4px; font-size: 12px; }
+    .otp-panel { padding: 22px; border: 1px solid #dce6f8; background: #f8faff; border-radius: 12px; }
+    .otp-panel h2 { margin: 0 0 7px; font-size: 19px; }
+    .otp-panel p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .otp-input { max-width: 270px; font-size: 22px !important; letter-spacing: 8px; font-weight: 800; text-align: center; }
+    .inline-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .secondary { min-height: 43px; padding: 0 17px; border: 1px solid #cbd5e1; border-radius: 9px; color: #344054; background: #fff; font-weight: 700; cursor: pointer; }
+    .secondary:hover { background: #f8fafc; }
+    .status { display: none; margin: 16px 0 0; padding: 12px 14px; border-radius: 9px; font-size: 12px; line-height: 1.5; }
+    .status.error-status { display: block; color: var(--danger); background: var(--danger-bg); border: 1px solid #fecdca; }
+    .status.success-status { display: block; color: var(--success); background: var(--success-bg); border: 1px solid #abefc6; }
+    .success-card { text-align: center; padding: 28px 12px 12px; }
+    .success-mark { width: 58px; height: 58px; margin: 0 auto 15px; display: grid; place-items: center; border-radius: 50%; color: var(--success); background: var(--success-bg); font-size: 28px; font-weight: 900; }
+    .success-card h2 { margin: 0 0 8px; font-size: 24px; }
+    .success-card p { margin: 0 auto 18px; max-width: 430px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .account-summary { margin: 0 auto; max-width: 430px; padding: 14px; border: 1px solid #e5eaf1; border-radius: 10px; text-align: left; font-size: 12px; }
+    .account-summary div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
+    .account-summary span:first-child { color: var(--muted); }
+    .account-summary span:last-child { text-align: right; font-weight: 700; overflow-wrap: anywhere; }
+    .utility-row { display: flex; justify-content: center; margin-top: 17px; }
+    .text-button { background: transparent; border: 0; cursor: pointer; font-size: 11px; }
+    footer { margin: 20px 0 0; text-align: center; color: #8590a0; font-size: 11px; }
+    dialog { width: min(92vw, 520px); border: 0; border-radius: 14px; padding: 24px; box-shadow: 0 20px 70px rgba(0,0,0,.25); }
+    dialog::backdrop { background: rgba(16,24,40,.45); }
+    dialog h2 { margin-top: 0; }
+    dialog p, dialog li { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .dialog-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
+    .hidden { display: none !important; }
+    @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .side-card { order: 2; } }
+    @media (max-width: 560px) {
+      main { width: min(100% - 20px, 680px); margin-top: 20px; }
+      .topbar { height: 62px; padding: 0 16px; }
+      .top-note { display: none; }
+      .fields { grid-template-columns: 1fr; gap: 11px; }
+      .field.full { grid-column: auto; }
+      .step-line { flex-basis: 20px; }
+      .step { font-size: 11px; }
+      .form-card { padding: 22px 18px; }
+      .inline-actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">S</span><span>ShopEase</span></div>
+    <div class="top-note">A simple, secure shopping experience</div>
+  </header>
+
+  <main>
+    <div class="layout">
+      <section class="card form-card" aria-labelledby="page-title">
+        <p class="eyebrow">Create your ShopEase account</p>
+        <h1 id="page-title">Join ShopEase</h1>
+        <p class="intro" id="page-intro">Enter your details below to create an account and manage your shopping in one place.</p>
+
+        <div class="steps" aria-label="Registration progress">
+          <div class="step active" id="step-one"><span class="step-number">1</span><span>Your details</span></div>
+          <span class="step-line"></span>
+          <div class="step" id="step-two"><span class="step-number">2</span><span>Verify mobile</span></div>
+        </div>
+
+        <form id="registration-form" novalidate>
+          <p class="section-label">Personal information</p>
+          <div class="fields">
+            <div class="field">
+              <label for="first-name">First name <span class="required">*</span></label>
+              <input id="first-name" name="firstName" type="text" autocomplete="given-name" placeholder="e.g. Asha" maxlength="60" />
+              <p class="error" id="first-name-error"></p>
+            </div>
+            <div class="field">
+              <label for="last-name">Last name <span class="required">*</span></label>
+              <input id="last-name" name="lastName" type="text" autocomplete="family-name" placeholder="e.g. Sharma" maxlength="60" />
+              <p class="error" id="last-name-error"></p>
+            </div>
+            <div class="field">
+              <label for="dob">Date of birth <span class="required">*</span></label>
+              <input id="dob" name="dob" type="date" autocomplete="bday" />
+              <p class="error" id="dob-error"></p>
+            </div>
+            <div class="field">
+              <label for="mobile">Mobile number <span class="required">*</span></label>
+              <input id="mobile" name="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="10-digit mobile number" maxlength="20" />
+              <p class="hint">Enter exactly 10 digits, without +91 or spaces.</p>
+              <p class="error" id="mobile-error"></p>
+            </div>
+            <div class="field full">
+              <label for="email">Email address <span class="required">*</span></label>
+              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="150" />
+              <p class="error" id="email-error"></p>
+            </div>
+            <div class="field">
+              <label for="password">Password <span class="required">*</span></label>
+              <div class="password-wrap">
+                <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Create a password" maxlength="128" />
+                <button class="toggle-password" type="button" data-target="password">Show</button>
+              </div>
+              <p class="hint">8+ characters with uppercase, lowercase, number and special character.</p>
+              <p class="error" id="password-error"></p>
+            </div>
+            <div class="field">
+              <label for="confirm-password">Confirm password <span class="required">*</span></label>
+              <div class="password-wrap">
+                <input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter your password" maxlength="128" />
+                <button class="toggle-password" type="button" data-target="confirm-password">Show</button>
+              </div>
+              <p class="error" id="confirm-password-error"></p>
+            </div>
+          </div>
+
+          <div class="terms-row">
+            <input id="terms" name="terms" type="checkbox" />
+            <label for="terms">I have read and agree to the <a href="#" id="terms-link">Terms and Conditions</a>. <span class="required">*</span></label>
+          </div>
+          <p class="error terms-error" id="terms-error"></p>
+          <button class="primary" id="continue-button" type="submit">Continue to mobile verification</button>
+          <p class="form-note">Already have an account? Sign-in is covered in the next practice story.</p>
+        </form>
+
+        <section id="otp-section" class="hidden" aria-labelledby="otp-title">
+          <div class="otp-panel">
+            <h2 id="otp-title">Verify your mobile number</h2>
+            <p>Enter the one-time password generated for <strong id="masked-mobile"></strong>. This training application simulates SMS delivery.</p>
+            <label for="otp">6-digit verification code <span class="required">*</span></label>
+            <input id="otp" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" />
+            <p class="hint">Demo OTP for this practice project: <strong>123456</strong>. It expires after 5 minutes.</p>
+            <p class="error" id="otp-error"></p>
+            <p class="hint" id="otp-timer">OTP validity: 05:00</p>
+            <div class="inline-actions">
+              <button class="primary" style="margin-top:0" id="verify-button" type="button">Verify and create account</button>
+              <button class="secondary" id="back-button" type="button">Back to details</button>
+            </div>
+          </div>
+          <div id="otp-status" class="status" role="status" aria-live="polite"></div>
+        </section>
+
+        <section id="success-section" class="hidden success-card" aria-labelledby="success-title">
+          <div class="success-mark" aria-hidden="true">✓</div>
+          <h2 id="success-title">Account created successfully!</h2>
+          <p>Your ShopEase customer account has been created and your mobile number has been verified. You can now continue to the next practice story: Sign In.</p>
+          <div class="account-summary" id="account-summary"></div>
+          <div class="utility-row"><button class="text-button" id="register-another" type="button">Register another demo customer</button></div>
+        </section>
+        <div id="form-status" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <aside class="card side-card">
+        <h2>Why create an account?</h2>
+        <div class="benefit">
+          <div class="benefit-icon">✓</div>
+          <div><strong>Manage your orders</strong><span>Keep track of your purchases and delivery updates in one place.</span></div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon">⌂</div>
+          <div><strong>Save your details</strong><span>Store your contact information for a smoother shopping experience.</span></div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-icon">♡</div>
+          <div><strong>Personal shopping</strong><span>Access account features as you explore the ShopEase demo store.</span></div>
+        </div>
+        <div class="demo-box">
+          <strong>Manual testing practice build</strong>
+          This is a local demo application for US-001 only. No real SMS is sent and no real payment or shopping transaction takes place. Test accounts are saved in this browser only.
+        </div>
+        <div class="utility-row"><button class="text-button" id="reset-demo" type="button">Reset all local demo accounts</button></div>
+      </aside>
+    </div>
+    <footer>ShopEase Demo · US-001 User Registration · Built for manual testing practice</footer>
+  </main>
+
+  <dialog id="terms-dialog">
+    <h2>Terms and Conditions</h2>
+    <p>These sample terms are provided only for the ShopEase training application. By selecting the acceptance checkbox, you confirm that the demo information you enter is fictional and that you understand this application stores test account details in your current browser.</p>
+    <ul>
+      <li>Use fictional information for all practice registrations.</li>
+      <li>The OTP is simulated; no SMS will be sent.</li>
+      <li>This training application is not a production shopping service.</li>
+      <li>Local demo data can be removed using “Reset all local demo accounts”.</li>
+    </ul>
+    <div class="dialog-actions"><button class="secondary" id="close-terms" type="button">Close</button></div>
+  </dialog>
+
+  <script>
+    (() => {
+      'use strict';
+      const STORAGE_KEY = 'shopease_demo_accounts_v1';
+      const DEMO_OTP = '123456';
+      const OTP_VALIDITY_MS = 5 * 60 * 1000;
+      const $ = (id) => document.getElementById(id);
+      const form = $('registration-form');
+      let pendingRegistration = null;
+      let otpExpiresAt = null;
+      let timerHandle = null;
+      let isSubmitting = false;
+
+      function getAccounts() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+          console.error('Could not read ShopEase demo accounts:', error);
+          return [];
+        }
+      }
+
+      function saveAccounts(accounts) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+      }
+
+      function normalizeEmail(value) { return value.trim().toLowerCase(); }
+      function normalizeMobile(value) { return value.trim(); }
+
+      function calculateAge(dateString) {
+        if (!dateString) return -1;
+        const dob = new Date(dateString + 'T00:00:00');
+        if (Number.isNaN(dob.getTime())) return -1;
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDifference = today.getMonth() - dob.getMonth();
+        if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dob.getDate())) age--;
+        return age;
+      }
+
+      function setError(fieldId, message) {
+        const input = $(fieldId);
+        const error = $(fieldId + '-error');
+        if (input) input.classList.toggle('invalid', Boolean(message));
+        if (error) error.textContent = message || '';
+      }
+
+      function clearErrors() {
+        ['first-name','last-name','dob','mobile','email','password','confirm-password','terms'].forEach(id => setError(id, ''));
+        $('form-status').className = 'status';
+        $('form-status').textContent = '';
+      }
+
+      function showFormStatus(message, type) {
+        const el = $('form-status');
+        el.textContent = message;
+        el.className = 'status ' + (type === 'success' ? 'success-status' : 'error-status');
+      }
+
+      function validateName(value, label) {
+        const cleaned = value.trim();
+        if (!cleaned) return label + ' is required.';
+        if (cleaned.length < 2 || cleaned.length > 50) return label + ' must be between 2 and 50 characters.';
+        if (!/^[\p{L}][\p{L} '\u2019-]*$/u.test(cleaned)) return label + ' may contain only letters, spaces, apostrophes and hyphens.';
+        return '';
+      }
+
+      function validateForm() {
+        clearErrors();
+        const firstName = $('first-name').value;
+        const lastName = $('last-name').value;
+        const dob = $('dob').value;
+        const email = $('email').value.trim();
+        const mobile = $('mobile').value.trim();
+        const password = $('password').value;
+        const confirmPassword = $('confirm-password').value;
+        const termsAccepted = $('terms').checked;
+        let valid = true;
+
+        const firstError = validateName(firstName, 'First name');
+        if (firstError) { setError('first-name', firstError); valid = false; }
+        const lastError = validateName(lastName, 'Last name');
+        if (lastError) { setError('last-name', lastError); valid = false; }
+
+        if (!dob) { setError('dob', 'Date of birth is required.'); valid = false; }
+        else if (calculateAge(dob) < 18) { setError('dob', 'You must be at least 18 years old to register.'); valid = false; }
+
+        if (!email) { setError('email', 'Email address is required.'); valid = false; }
+        else if (email.length > 100) { setError('email', 'Email address must not exceed 100 characters.'); valid = false; }
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('email', 'Enter a valid email address, for example name@example.com.'); valid = false; }
+
+        if (!mobile) { setError('mobile', 'Mobile number is required.'); valid = false; }
+        else if (!/^\d{10}$/.test(mobile)) { setError('mobile', 'Mobile number must contain exactly 10 digits.'); valid = false; }
+
+        if (!password) { setError('password', 'Password is required.'); valid = false; }
+        else {
+          const passwordValid = password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+          if (!passwordValid) { setError('password', 'Use at least 8 characters with uppercase, lowercase, a number and a special character.'); valid = false; }
+        }
+        if (!confirmPassword) { setError('confirm-password', 'Please confirm your password.'); valid = false; }
+        else if (password !== confirmPassword) { setError('confirm-password', 'Confirm password must exactly match password.'); valid = false; }
+
+        if (!termsAccepted) { setError('terms', ''); $('terms-error').textContent = 'You must accept the Terms and Conditions to continue.'; valid = false; }
+
+        if (valid) {
+          const accounts = getAccounts();
+          const emailExists = accounts.some(a => normalizeEmail(a.email) === normalizeEmail(email));
+          const mobileExists = accounts.some(a => normalizeMobile(a.mobile) === normalizeMobile(mobile));
+          if (emailExists) { setError('email', 'This email address is already registered.'); valid = false; }
+          if (mobileExists) { setError('mobile', 'This mobile number is already registered.'); valid = false; }
+        }
+        return valid;
+      }
+
+      function setStep(step) {
+        $('step-one').classList.toggle('active', step === 1);
+        $('step-one').classList.toggle('done', step > 1);
+        $('step-two').classList.toggle('active', step === 2);
+        $('step-two').classList.toggle('done', step > 2);
+      }
+
+      function startOtpTimer() {
+        otpExpiresAt = Date.now() + OTP_VALIDITY_MS;
+        if (timerHandle) clearInterval(timerHandle);
+        updateOtpTimer();
+        timerHandle = setInterval(updateOtpTimer, 1000);
+      }
+
+      function updateOtpTimer() {
+        if (!otpExpiresAt) return;
+        const remaining = Math.max(0, otpExpiresAt - Date.now());
+        const minutes = String(Math.floor(remaining / 60000)).padStart(2, '0');
+        const seconds = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+        $('otp-timer').textContent = remaining > 0 ? `OTP validity: ${minutes}:${seconds}` : 'OTP expired. Return to details and submit again to generate a new demo OTP.';
+        if (remaining === 0 && timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+      }
+
+      function showOtpStep() {
+        $('registration-form').classList.add('hidden');
+        $('otp-section').classList.remove('hidden');
+        $('page-title').textContent = 'Verify your mobile';
+        $('page-intro').textContent = 'One final step: verify the mobile number you entered.';
+        $('masked-mobile').textContent = pendingRegistration.mobile.replace(/^(\d{2})\d{5}(\d{3})$/, '$1•••••$2');
+        $('otp').value = '';
+        $('otp-error').textContent = '';
+        $('otp').classList.remove('invalid');
+        $('otp-status').className = 'status';
+        $('otp-status').textContent = '';
+        setStep(2);
+        $('otp').focus();
+        startOtpTimer();
+      }
+
+      async function hashPassword(password) {
+        if (!window.crypto || !window.crypto.subtle || !window.crypto.getRandomValues) {
+          throw new Error('Secure browser cryptography is unavailable. Please open this demo using the local server steps in README.txt.');
+        }
+        const saltBytes = new Uint8Array(16);
+        window.crypto.getRandomValues(saltBytes);
+        const salt = Array.from(saltBytes, b => b.toString(16).padStart(2, '0')).join('');
+        const data = new TextEncoder().encode(salt + password);
+        const digest = await window.crypto.subtle.digest('SHA-256', data);
+        const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+        return { salt, passwordHash: hash };
+      }
+
+      async function verifyOtp() {
+        if (isSubmitting) return;
+        const otp = $('otp').value.trim();
+        $('otp-error').textContent = '';
+        $('otp').classList.remove('invalid');
+        if (!otp) {
+          $('otp-error').textContent = 'OTP is required.';
+          $('otp').classList.add('invalid');
+          return;
+        }
+        if (!/^\d{6}$/.test(otp)) {
+          $('otp-error').textContent = 'OTP must contain exactly 6 digits.';
+          $('otp').classList.add('invalid');
+          return;
+        }
+        if (!otpExpiresAt || Date.now() > otpExpiresAt) {
+          $('otp-error').textContent = 'This OTP has expired. Return to details and submit again to generate a new one.';
+          $('otp').classList.add('invalid');
+          return;
+        }
+        if (otp !== DEMO_OTP) {
+          $('otp-error').textContent = 'The OTP you entered is incorrect. Please try again.';
+          $('otp').classList.add('invalid');
+          return;
+        }
+
+        isSubmitting = true;
+        $('verify-button').disabled = true;
+        $('verify-button').textContent = 'Creating account…';
+        try {
+          const accounts = getAccounts();
+          const emailExists = accounts.some(a => normalizeEmail(a.email) === normalizeEmail(pendingRegistration.email));
+          const mobileExists = accounts.some(a => normalizeMobile(a.mobile) === normalizeMobile(pendingRegistration.mobile));
+          if (emailExists || mobileExists) {
+            $('otp-status').textContent = emailExists ? 'This email address has already been registered in another session.' : 'This mobile number has already been registered in another session.';
+            $('otp-status').className = 'status error-status';
+            return;
+          }
+          const credentials = await hashPassword(pendingRegistration.password);
+          const account = {
+            id: 'SE-' + Date.now().toString(36).toUpperCase(),
+            firstName: pendingRegistration.firstName,
+            lastName: pendingRegistration.lastName,
+            dob: pendingRegistration.dob,
+            email: normalizeEmail(pendingRegistration.email),
+            mobile: pendingRegistration.mobile,
+            passwordSalt: credentials.salt,
+            passwordHash: credentials.passwordHash,
+            mobileVerified: true,
+            status: 'Active',
+            createdAt: new Date().toISOString()
+          };
+          accounts.push(account);
+          saveAccounts(accounts);
+          if (timerHandle) clearInterval(timerHandle);
+          otpExpiresAt = null;
+          $('otp-section').classList.add('hidden');
+          $('success-section').classList.remove('hidden');
+          $('page-title').textContent = 'Welcome to ShopEase';
+          $('page-intro').textContent = 'Your registration is complete.';
+          $('account-summary').innerHTML = `
+            <div><span>Customer ID</span><span>${escapeHtml(account.id)}</span></div>
+            <div><span>Name</span><span>${escapeHtml(account.firstName + ' ' + account.lastName)}</span></div>
+            <div><span>Email</span><span>${escapeHtml(account.email)}</span></div>
+            <div><span>Mobile</span><span>${escapeHtml(account.mobile)}</span></div>
+            <div><span>Account status</span><span>Active · Mobile verified</span></div>`;
+          setStep(3);
+        } catch (error) {
+          console.error(error);
+          $('otp-status').textContent = error.message || 'Something went wrong while creating the account. Please try again.';
+          $('otp-status').className = 'status error-status';
+        } finally {
+          isSubmitting = false;
+          $('verify-button').disabled = false;
+          $('verify-button').textContent = 'Verify and create account';
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (isSubmitting) return;
+        if (!validateForm()) {
+          showFormStatus('Please correct the highlighted fields before continuing.', 'error');
+          const firstInvalid = document.querySelector('input.invalid');
+          if (firstInvalid) firstInvalid.focus();
+          return;
+        }
+        pendingRegistration = {
+          firstName: $('first-name').value.trim(),
+          lastName: $('last-name').value.trim(),
+          dob: $('dob').value,
+          email: $('email').value.trim(),
+          mobile: $('mobile').value.trim(),
+          password: $('password').value
+        };
+        showOtpStep();
+      });
+
+      $('verify-button').addEventListener('click', verifyOtp);
+      $('otp').addEventListener('keydown', event => { if (event.key === 'Enter') verifyOtp(); });
+      $('otp').addEventListener('input', () => { $('otp-error').textContent = ''; $('otp').classList.remove('invalid'); });
+
+      $('back-button').addEventListener('click', () => {
+        if (timerHandle) clearInterval(timerHandle);
+        timerHandle = null; otpExpiresAt = null;
+        $('otp-section').classList.add('hidden');
+        $('registration-form').classList.remove('hidden');
+        $('page-title').textContent = 'Join ShopEase';
+        $('page-intro').textContent = 'Enter your details below to create an account and manage your shopping in one place.';
+        setStep(1);
+      });
+
+      $('register-another').addEventListener('click', () => {
+        form.reset(); clearErrors();
+        pendingRegistration = null;
+        $('success-section').classList.add('hidden');
+        $('registration-form').classList.remove('hidden');
+        $('page-title').textContent = 'Join ShopEase';
+        $('page-intro').textContent = 'Enter your details below to create an account and manage your shopping in one place.';
+        setStep(1);
+      });
+
+      document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', () => {
+          const input = $(button.dataset.target);
+          const show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          button.textContent = show ? 'Hide' : 'Show';
+        });
+      });
+
+      $('terms-link').addEventListener('click', event => { event.preventDefault(); $('terms-dialog').showModal(); });
+      $('close-terms').addEventListener('click', () => $('terms-dialog').close());
+
+      $('reset-demo').addEventListener('click', () => {
+        const confirmed = window.confirm('Delete all ShopEase demo accounts saved in this browser? This action cannot be undone.');
+        if (!confirmed) return;
+        localStorage.removeItem(STORAGE_KEY);
+        showFormStatus('All local demo accounts have been deleted.', 'success');
+      });
+
+      // Clear field errors as the user edits a field after a failed submission.
+      ['first-name','last-name','dob','mobile','email','password','confirm-password'].forEach(id => {
+        $(id).addEventListener('input', () => {
+          if ($(id).classList.contains('invalid')) setError(id, '');
+          $('form-status').className = 'status';
+        });
+      });
+      $('terms').addEventListener('change', () => { $('terms-error').textContent = ''; });
+    })();
+  </script>
+</body>
+</html>
