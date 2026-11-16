@@ -1,60 +1,48 @@
-SHOPEASE - US-001 USER REGISTRATION DEMO
-========================================
+SHOPEASE US-001 BACKEND (LOCAL PRACTICE)
 
-WHAT THIS IS
-------------
-A small browser application for practising functional testing of US-001: Register a new customer account.
-It includes registration fields, field-level validation, case-insensitive duplicate email checking, duplicate mobile checking, simulated OTP verification and a success confirmation.
+Requirements: Python 3.9+
 
-HOW TO RUN (RECOMMENDED)
-------------------------
-1. Extract the ZIP file to a folder on your computer.
-2. Make sure Python 3 is installed.
-3. Open Command Prompt (Windows) or Terminal (Mac/Linux).
-4. Change directory to the extracted shopease_us001 folder. Example on Windows:
-      cd Downloads\shopease_us001
-5. Start a local web server:
-      py -m http.server 8000
-   If that command does not work, try:
-      python -m http.server 8000
-6. Open Chrome and visit:
-      http://localhost:8000
-7. You should see the ShopEase registration page.
-8. To stop the server, return to the command window and press Ctrl+C.
+1) Open a terminal in this folder.
+2) (Recommended) Create and activate a virtual environment:
+   Windows: py -m venv .venv
+            .venv\Scripts\activate
+   macOS/Linux: python3 -m venv .venv
+                source .venv/bin/activate
+3) Install dependencies:
+   py -m pip install -r requirements.txt
+4) Start the API:
+   py app.py
+5) Keep the terminal open. API base URL: http://127.0.0.1:5000
+6) Check in browser: http://127.0.0.1:5000/api/health
 
-DEMO TEST DATA
---------------
-Valid sample:
-First name: Asha
-Last name: Sharma
-Date of birth: 1995-04-15
-Email: asha.demo@example.com
-Mobile: 9876543210
-Password: Test@1234
-Confirm password: Test@1234
-Terms: checked
-Demo OTP: 123456
+POSTMAN ENDPOINTS
+GET  http://127.0.0.1:5000/api/health
+POST http://127.0.0.1:5000/api/register
+POST http://127.0.0.1:5000/api/verify-otp
+GET  http://127.0.0.1:5000/api/users/1
+POST http://127.0.0.1:5000/api/test/reset
 
-Other examples from the business requirements:
-Duplicate email: asha.demo@example.com (after successfully registering it once)
-Invalid email: asha.demo@ or asha.example.com
-Invalid mobile: 987654321 or 98AB543210
-Invalid password: test1234 or TEST@1234
-Invalid OTP: 000000
+REGISTER request: Body > raw > JSON
+{
+  "firstName": "Asha",
+  "lastName": "Sharma",
+  "dob": "1995-04-15",
+  "email": "asha.demo@example.com",
+  "mobile": "9876543210",
+  "password": "Test@1234",
+  "confirmPassword": "Test@1234",
+  "termsAccepted": true
+}
 
-IMPORTANT IMPLEMENTATION NOTES
-------------------------------
-1. The business requirements specify the fixed demo OTP 123456 but do not define an expiry duration. This build uses a 5-minute OTP expiry as an explicit practice assumption. The expiry is shown on the OTP screen.
-2. OTP delivery is simulated. No real SMS is sent.
-3. Accounts are stored in this browser's localStorage. They do not sync to another browser or computer. Use the same browser profile for repeat tests.
-4. The password is not stored in plain text. This demo stores a salted SHA-256 hash to support the registration exercise. This is NOT production-grade password storage. A real application must use a secure server-side password hashing method such as Argon2id, bcrypt or scrypt, with suitable rate limiting and account protections.
-5. This is a front-end practice build, not a production service. Personal information should not be entered; use only fictional test data.
-6. The app implements US-001 only. Sign-in, profile, address book, shopping and other user stories are not included in this first build.
+A successful registration returns HTTP 201 and a userId. Account status remains PENDING until OTP verification.
+VERIFY request: Body > raw > JSON
+{ "userId": 1, "otp": "123456" }
+Successful verification returns HTTP 200 and ACTIVE status.
 
-RESETTING TEST DATA
--------------------
-Use the "Reset all local demo accounts" link in the right-hand information panel. Confirm the browser prompt to remove all registered demo accounts from this browser. You can then repeat the registration scenarios from a clean state.
-
-SCOPE NOTE
-----------
-The application follows the US-001 business requirements in the ShopEase requirements pack. Where a rule was not specified (OTP expiry), the assumption is documented above so that it can be reviewed rather than treated as an original business requirement.
+IMPORTANT DEMO LIMITATIONS
+- OTP is fixed to 123456 and included in the registration response for practice. No real SMS/email is sent.
+- SQLite database file shopease.db is created automatically beside app.py.
+- Passwords are hashed for this demo, but use a production password-hashing algorithm (Argon2/bcrypt/scrypt) and proper secret/OTP handling in a real system.
+- /api/users/<id> and /api/test/reset are test-only helpers. Never expose these as-is in production.
+- This backend is a separate API from the existing static HTML page. Postman calls the API directly. The current HTML file has not yet been wired to call this backend.
+- For repeat tests, use a new email and mobile number, or call POST /api/test/reset to clear demo data.
