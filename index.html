@@ -224,7 +224,7 @@
             <p>Enter the one-time password generated for <strong id="masked-mobile"></strong>. This training application simulates SMS delivery.</p>
             <label for="otp">6-digit verification code <span class="required">*</span></label>
             <input id="otp" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" />
-            <p class="hint">Demo OTP for this practice project: <strong>123456</strong>. It expires after 5 minutes.</p>
+            <p class="hint">Demo OTP for this practice project: <strong id="otp-hint-value">123456</strong>. It expires after 5 minutes.</p>
             <p class="error" id="otp-error"></p>
             <p class="hint" id="otp-timer">OTP validity: 05:00</p>
             <div class="inline-actions">
@@ -261,9 +261,9 @@
         </div>
         <div class="demo-box">
           <strong>Manual testing practice build</strong>
-          This is a local demo application for US-001 only. No real SMS is sent and no real payment or shopping transaction takes place. Test accounts are saved in this browser only.
+          This is a local demo application for US-001 only. No real SMS is sent and no real payment or shopping transaction takes place. Test accounts are saved in the local backend database.
         </div>
-        <div class="utility-row"><button class="text-button" id="reset-demo" type="button">Reset all local demo accounts</button></div>
+        <div class="utility-row"><button class="text-button" id="reset-demo" type="button">Reset all demo accounts</button></div>
       </aside>
     </div>
     <footer>ShopEase Demo · US-001 User Registration · Built for manual testing practice</footer>
@@ -271,12 +271,12 @@
 
   <dialog id="terms-dialog">
     <h2>Terms and Conditions</h2>
-    <p>These sample terms are provided only for the ShopEase training application. By selecting the acceptance checkbox, you confirm that the demo information you enter is fictional and that you understand this application stores test account details in your current browser.</p>
+    <p>These sample terms are provided only for the ShopEase training application. By selecting the acceptance checkbox, you confirm that the demo information you enter is fictional and that you understand this application stores test account details in the local backend database.</p>
     <ul>
       <li>Use fictional information for all practice registrations.</li>
       <li>The OTP is simulated; no SMS will be sent.</li>
       <li>This training application is not a production shopping service.</li>
-      <li>Local demo data can be removed using “Reset all local demo accounts”.</li>
+      <li>Local demo data can be removed using “Reset all demo accounts”.</li>
     </ul>
     <div class="dialog-actions"><button class="secondary" id="close-terms" type="button">Close</button></div>
   </dialog>
@@ -284,8 +284,10 @@
   <script>
     (() => {
       'use strict';
-      const STORAGE_KEY = 'shopease_demo_accounts_v1';
-      const DEMO_OTP = '123456';
+
+      // Flask backend base URL (see README.txt). Override via window.SHOPEASE_API_BASE if needed.
+      const API_BASE = (window.SHOPEASE_API_BASE || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+      const DEMO_OTP_HINT = '123456';
       const OTP_VALIDITY_MS = 5 * 60 * 1000;
       const $ = (id) => document.getElementById(id);
       const form = $('registration-form');
@@ -293,24 +295,6 @@
       let otpExpiresAt = null;
       let timerHandle = null;
       let isSubmitting = false;
-
-      function getAccounts() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const parsed = raw ? JSON.parse(raw) : [];
-          return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-          console.error('Could not read ShopEase demo accounts:', error);
-          return [];
-        }
-      }
-
-      function saveAccounts(accounts) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
-      }
-
-      function normalizeEmail(value) { return value.trim().toLowerCase(); }
-      function normalizeMobile(value) { return value.trim(); }
 
       function calculateAge(dateString) {
         if (!dateString) return -1;
@@ -387,13 +371,6 @@
 
         if (!termsAccepted) { setError('terms', ''); $('terms-error').textContent = 'You must accept the Terms and Conditions to continue.'; valid = false; }
 
-        if (valid) {
-          const accounts = getAccounts();
-          const emailExists = accounts.some(a => normalizeEmail(a.email) === normalizeEmail(email));
-          const mobileExists = accounts.some(a => normalizeMobile(a.mobile) === normalizeMobile(mobile));
-          if (emailExists) { setError('email', 'This email address is already registered.'); valid = false; }
-          if (mobileExists) { setError('mobile', 'This mobile number is already registered.'); valid = false; }
-        }
         return valid;
       }
 
@@ -426,6 +403,9 @@
         $('page-title').textContent = 'Verify your mobile';
         $('page-intro').textContent = 'One final step: verify the mobile number you entered.';
         $('masked-mobile').textContent = pendingRegistration.mobile.replace(/^(\d{2})\d{5}(\d{3})$/, '$1•••••$2');
+        if (pendingRegistration.demoOtp) {
+          $('otp-hint-value').textContent = pendingRegistration.demoOtp;
+        }
         $('otp').value = '';
         $('otp-error').textContent = '';
         $('otp').classList.remove('invalid');
@@ -436,24 +416,13 @@
         startOtpTimer();
       }
 
-      async function hashPassword(password) {
-        if (!window.crypto || !window.crypto.subtle || !window.crypto.getRandomValues) {
-          throw new Error('Secure browser cryptography is unavailable. Please open this demo using the local server steps in README.txt.');
-        }
-        const saltBytes = new Uint8Array(16);
-        window.crypto.getRandomValues(saltBytes);
-        const salt = Array.from(saltBytes, b => b.toString(16).padStart(2, '0')).join('');
-        const data = new TextEncoder().encode(salt + password);
-        const digest = await window.crypto.subtle.digest('SHA-256', data);
-        const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
-        return { salt, passwordHash: hash };
-      }
-
       async function verifyOtp() {
         if (isSubmitting) return;
+
         const otp = $('otp').value.trim();
         $('otp-error').textContent = '';
         $('otp').classList.remove('invalid');
+
         if (!otp) {
           $('otp-error').textContent = 'OTP is required.';
           $('otp').classList.add('invalid');
@@ -469,56 +438,67 @@
           $('otp').classList.add('invalid');
           return;
         }
-        if (otp !== DEMO_OTP) {
-          $('otp-error').textContent = 'The OTP you entered is incorrect. Please try again.';
-          $('otp').classList.add('invalid');
-          return;
-        }
 
         isSubmitting = true;
         $('verify-button').disabled = true;
-        $('verify-button').textContent = 'Creating account…';
+        $('verify-button').textContent = 'Verifying…';
+        $('otp-status').className = 'status';
+        $('otp-status').textContent = '';
+
         try {
-          const accounts = getAccounts();
-          const emailExists = accounts.some(a => normalizeEmail(a.email) === normalizeEmail(pendingRegistration.email));
-          const mobileExists = accounts.some(a => normalizeMobile(a.mobile) === normalizeMobile(pendingRegistration.mobile));
-          if (emailExists || mobileExists) {
-            $('otp-status').textContent = emailExists ? 'This email address has already been registered in another session.' : 'This mobile number has already been registered in another session.';
-            $('otp-status').className = 'status error-status';
+          const res = await fetch(API_BASE + '/api/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: pendingRegistration.userId, otp })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.success) {
+            const message = data.message || 'Verification failed. Please try again.';
+            if (data.field === 'otp' || /OTP/i.test(message)) {
+              $('otp-error').textContent = message;
+              $('otp').classList.add('invalid');
+            } else {
+              $('otp-status').textContent = message;
+              $('otp-status').className = 'status error-status';
+            }
             return;
           }
-          const credentials = await hashPassword(pendingRegistration.password);
-          const account = {
-            id: 'SE-' + Date.now().toString(36).toUpperCase(),
-            firstName: pendingRegistration.firstName,
-            lastName: pendingRegistration.lastName,
-            dob: pendingRegistration.dob,
-            email: normalizeEmail(pendingRegistration.email),
-            mobile: pendingRegistration.mobile,
-            passwordSalt: credentials.salt,
-            passwordHash: credentials.passwordHash,
-            mobileVerified: true,
-            status: 'Active',
-            createdAt: new Date().toISOString()
-          };
-          accounts.push(account);
-          saveAccounts(accounts);
+
+          let user = null;
+          try {
+            const userRes = await fetch(API_BASE + '/api/users/' + encodeURIComponent(pendingRegistration.userId));
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              if (userData.success && userData.user) user = userData.user;
+            }
+          } catch (_) { /* non-fatal */ }
+
           if (timerHandle) clearInterval(timerHandle);
           otpExpiresAt = null;
           $('otp-section').classList.add('hidden');
           $('success-section').classList.remove('hidden');
           $('page-title').textContent = 'Welcome to ShopEase';
           $('page-intro').textContent = 'Your registration is complete.';
-          $('account-summary').innerHTML = `
-            <div><span>Customer ID</span><span>${escapeHtml(account.id)}</span></div>
-            <div><span>Name</span><span>${escapeHtml(account.firstName + ' ' + account.lastName)}</span></div>
-            <div><span>Email</span><span>${escapeHtml(account.email)}</span></div>
-            <div><span>Mobile</span><span>${escapeHtml(account.mobile)}</span></div>
-            <div><span>Account status</span><span>Active · Mobile verified</span></div>`;
           setStep(3);
-        } catch (error) {
-          console.error(error);
-          $('otp-status').textContent = error.message || 'Something went wrong while creating the account. Please try again.';
+
+          const display = user || {
+            id: pendingRegistration.userId,
+            firstName: pendingRegistration.firstName,
+            lastName: pendingRegistration.lastName,
+            email: pendingRegistration.email,
+            mobile: pendingRegistration.mobile,
+            status: 'ACTIVE'
+          };
+          $('account-summary').innerHTML = `
+            <div><span>Customer ID</span><span>${escapeHtml(display.id)}</span></div>
+            <div><span>Name</span><span>${escapeHtml(display.firstName + ' ' + display.lastName)}</span></div>
+            <div><span>Email</span><span>${escapeHtml(display.email)}</span></div>
+            <div><span>Mobile</span><span>${escapeHtml(display.mobile)}</span></div>
+            <div><span>Account status</span><span>${escapeHtml((display.status || 'ACTIVE'))} · Mobile verified</span></div>`;
+        } catch (err) {
+          console.error(err);
+          $('otp-status').textContent = 'Could not reach the verification API at ' + API_BASE + '. Make sure the Flask server is running.';
           $('otp-status').className = 'status error-status';
         } finally {
           isSubmitting = false;
@@ -531,7 +511,7 @@
         return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
       }
 
-      form.addEventListener('submit', (event) => {
+      form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (isSubmitting) return;
         if (!validateForm()) {
@@ -540,15 +520,67 @@
           if (firstInvalid) firstInvalid.focus();
           return;
         }
+
         pendingRegistration = {
           firstName: $('first-name').value.trim(),
           lastName: $('last-name').value.trim(),
           dob: $('dob').value,
           email: $('email').value.trim(),
           mobile: $('mobile').value.trim(),
-          password: $('password').value
+          password: $('password').value,
+          confirmPassword: $('confirm-password').value,
+          termsAccepted: $('terms').checked
         };
-        showOtpStep();
+
+        isSubmitting = true;
+        const btn = $('continue-button');
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
+        $('form-status').className = 'status';
+        $('form-status').textContent = '';
+
+        try {
+          const res = await fetch(API_BASE + '/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pendingRegistration)
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.success) {
+            const message = data.message || 'Registration failed. Please try again.';
+            if (data.field === 'email' && /already registered/i.test(message)) {
+              setError('email', 'This email address is already registered.');
+            } else if (data.field === 'mobile' && /already registered/i.test(message)) {
+              setError('mobile', 'This mobile number is already registered.');
+            } else if (data.field) {
+              const map = {
+                firstName: 'first-name', lastName: 'last-name', dob: 'dob',
+                email: 'email', mobile: 'mobile', password: 'password',
+                confirmPassword: 'confirm-password', termsAccepted: 'terms'
+              };
+              if (map[data.field]) setError(map[data.field], message);
+            }
+            showFormStatus(message, 'error');
+            return;
+          }
+
+          pendingRegistration.userId = data.userId;
+          pendingRegistration.demoOtp = data.demoOtp || DEMO_OTP_HINT;
+          showOtpStep();
+        } catch (err) {
+          console.error(err);
+          showFormStatus(
+            'Could not reach the registration API at ' + API_BASE +
+            '. Make sure the Flask server is running (see README.txt) and CORS is allowed.',
+            'error'
+          );
+        } finally {
+          isSubmitting = false;
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        }
       });
 
       $('verify-button').addEventListener('click', verifyOtp);
@@ -587,14 +619,20 @@
       $('terms-link').addEventListener('click', event => { event.preventDefault(); $('terms-dialog').showModal(); });
       $('close-terms').addEventListener('click', () => $('terms-dialog').close());
 
-      $('reset-demo').addEventListener('click', () => {
-        const confirmed = window.confirm('Delete all ShopEase demo accounts saved in this browser? This action cannot be undone.');
+      $('reset-demo').addEventListener('click', async () => {
+        const confirmed = window.confirm('Delete all demo registrations stored in the backend database? This action cannot be undone.');
         if (!confirmed) return;
-        localStorage.removeItem(STORAGE_KEY);
-        showFormStatus('All local demo accounts have been deleted.', 'success');
+        try {
+          const res = await fetch(API_BASE + '/api/test/reset', { method: 'POST' });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.success) throw new Error(data.message || 'Reset failed');
+          showFormStatus('All demo registrations have been cleared from the backend.', 'success');
+        } catch (err) {
+          console.error(err);
+          showFormStatus('Could not reset backend data: ' + err.message, 'error');
+        }
       });
 
-      // Clear field errors as the user edits a field after a failed submission.
       ['first-name','last-name','dob','mobile','email','password','confirm-password'].forEach(id => {
         $(id).addEventListener('input', () => {
           if ($(id).classList.contains('invalid')) setError(id, '');
