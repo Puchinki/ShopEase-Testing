@@ -1,12 +1,28 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 import mysql.connector
 import re, os, hashlib
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 app = Flask(__name__)
-CORS(app)
+app.secret_key = os.getenv('SECRET_KEY', 'shopease-us002-dev-secret')
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=False,
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),
+)
+CORS(app, supports_credentials=True,
+     origins=['http://127.0.0.1:5500', 'http://localhost:5500',
+              'http://127.0.0.1:5000', 'http://localhost:5000'])
 DEMO_OTP = '123456'
+
+# US-002 constants
+MAX_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+GENERIC_ERROR = 'Invalid email or password.'
+LOCKOUT_ERROR = ('Too many failed attempts. Sign-in is temporarily blocked. '
+                 'Please try again after 15 minutes.')
 
 # --- MySQL configuration (adjust to your environment) ---
 DB_CONFIG = {
@@ -30,19 +46,33 @@ def init_db():
         cur = con.cursor()
         cur.execute('''
             CREATE TABLE IF NOT EXISTS registrations (
-                id            INT AUTO_INCREMENT PRIMARY KEY,
-                first_name    VARCHAR(50)  NOT NULL,
-                last_name     VARCHAR(50)  NOT NULL,
-                dob           DATE         NOT NULL,
-                email         VARCHAR(100) NOT NULL,
-                mobile        VARCHAR(10)  NOT NULL,
-                password_hash CHAR(64)     NOT NULL,
-                status        VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-                created_at    DATETIME     NOT NULL,
+                id              INT AUTO_INCREMENT PRIMARY KEY,
+                first_name      VARCHAR(50)  NOT NULL,
+                last_name       VARCHAR(50)  NOT NULL,
+                dob             DATE         NOT NULL,
+                email           VARCHAR(100) NOT NULL,
+                mobile          VARCHAR(10)  NOT NULL,
+                password_hash   CHAR(64)     NOT NULL,
+                status          VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+                created_at      DATETIME     NOT NULL,
+                failed_attempts INT          NOT NULL DEFAULT 0,
+                lockout_until   DATETIME     NULL,
                 UNIQUE KEY uq_email  (email),
                 UNIQUE KEY uq_mobile (mobile)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
+        con.commit()
+
+        # Safe migration for existing DBs created before US-002
+        cur.execute("""
+            SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'registrations'
+        """)
+        cols = {r[0] for r in cur.fetchall()}
+        if 'failed_attempts' not in cols:
+            cur.execute("ALTER TABLE registrations ADD COLUMN failed_attempts INT NOT NULL DEFAULT 0")
+        if 'lockout_until' not in cols:
+            cur.execute("ALTER TABLE registrations ADD COLUMN lockout_until DATETIME NULL")
         con.commit()
     finally:
         con.close()
@@ -101,11 +131,15 @@ def validate(payload):
     return None
 
 
+# ══════════════════════════════════════════════════════════════════
+# US-001 — Registration, OTP verification, user lookup
+# ══════════════════════════════════════════════════════════════════
+
 @app.get('/api/health')
 def health():
     return jsonify({
         'success': True,
-        'service': 'ShopEase US-001 API',
+        'service': 'ShopEase US-001 + US-002 API',
         'database': 'MySQL',
         'status': 'running',
     })
@@ -138,8 +172,9 @@ def register():
         cur.execute('''
             INSERT INTO registrations
                 (first_name, last_name, dob, email, mobile,
-                 password_hash, status, created_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                 password_hash, status, created_at,
+                 failed_attempts, lockout_until)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         ''', (
             payload['firstName'].strip(),
             payload['lastName'].strip(),
@@ -149,12 +184,13 @@ def register():
             pw_hash,
             'PENDING',
             datetime.utcnow(),
+            0,
+            None,
         ))
         user_id = cur.lastrowid
         con.commit()
     except mysql.connector.IntegrityError as e:
         con.rollback()
-        # Safety net if a race condition hits a unique constraint
         if 'uq_email' in str(e) or 'email' in str(e).lower():
             return error('Email is already registered', 409, 'email')
         if 'uq_mobile' in str(e) or 'mobile' in str(e).lower():
@@ -229,7 +265,6 @@ def get_user(user_id):
     if not row:
         return error('User not found', 404)
 
-    # Convert non-JSON-serializable types
     if isinstance(row.get('dob'), date):
         row['dob'] = row['dob'].isoformat()
     if isinstance(row.get('created_at'), datetime):
@@ -248,6 +283,144 @@ def reset_demo_data():
     finally:
         con.close()
     return jsonify({'success': True, 'message': 'Demo registration data cleared'})
+
+
+# ══════════════════════════════════════════════════════════════════
+# US-002 — Sign in to an existing account
+# ══════════════════════════════════════════════════════════════════
+
+@app.post('/api/signin')
+def signin():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return error('Request body must be valid JSON')
+
+    email = (payload.get('email') or '').strip()
+    password = payload.get('password') or ''
+
+    errors = {}
+    if not email:
+        errors['email'] = 'Email is required.'
+    elif not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+        errors['email'] = 'Enter a valid email address.'
+    if not password:
+        errors['password'] = 'Password is required.'
+    if errors:
+        return jsonify({'success': False,
+                        'message': 'Please fix the highlighted fields.',
+                        'errors': errors}), 400
+
+    email = email.lower()
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    con = db()
+    try:
+        cur = con.cursor(dictionary=True)
+        cur.execute('''
+            SELECT id, email, password_hash, status,
+                   COALESCE(failed_attempts, 0) AS failed_attempts,
+                   lockout_until
+            FROM registrations
+            WHERE email=%s
+        ''', (email,))
+        user = cur.fetchone()
+
+        # No email-existence disclosure: unknown OR non-ACTIVE → same message
+        if not user or user['status'] != 'ACTIVE':
+            return error(GENERIC_ERROR, 401)
+
+        now = datetime.utcnow()
+
+        # Lockout still active?
+        if user['lockout_until'] and now < user['lockout_until']:
+            remaining = int((user['lockout_until'] - now).total_seconds())
+            return jsonify({'success': False,
+                            'message': LOCKOUT_ERROR,
+                            'remainingSeconds': remaining}), 423
+
+        # Lockout expired → reset counters
+        if user['lockout_until'] and now >= user['lockout_until']:
+            cur = con.cursor()
+            cur.execute('UPDATE registrations SET failed_attempts=0, '
+                        'lockout_until=NULL WHERE id=%s', (user['id'],))
+            con.commit()
+            user['failed_attempts'] = 0
+            user['lockout_until'] = None
+
+        # Case-sensitive password compare (SHA-256 is exact)
+        if pw_hash != user['password_hash']:
+            attempts = user['failed_attempts'] + 1
+            if attempts >= MAX_ATTEMPTS:
+                lock_until = now + timedelta(minutes=LOCKOUT_MINUTES)
+                cur = con.cursor()
+                cur.execute('UPDATE registrations SET failed_attempts=%s, '
+                            'lockout_until=%s WHERE id=%s',
+                            (attempts, lock_until, user['id']))
+                con.commit()
+                return jsonify({'success': False,
+                                'message': LOCKOUT_ERROR,
+                                'remainingSeconds': LOCKOUT_MINUTES * 60}), 423
+
+            cur = con.cursor()
+            cur.execute('UPDATE registrations SET failed_attempts=%s WHERE id=%s',
+                        (attempts, user['id']))
+            con.commit()
+            return jsonify({
+                'success': False,
+                'message': GENERIC_ERROR,
+                'attemptsLeft': MAX_ATTEMPTS - attempts,
+            }), 401
+
+        # ✅ Success — reset counter
+        cur = con.cursor()
+        cur.execute('UPDATE registrations SET failed_attempts=0, '
+                    'lockout_until=NULL WHERE id=%s', (user['id'],))
+        con.commit()
+    finally:
+        con.close()
+
+    session.permanent = True
+    session['user'] = {'id': user['id'], 'email': user['email']}
+
+    return jsonify({
+        'success': True,
+        'message': 'Signed in successfully.',
+        'redirectTo': 'dashboard.html',
+        'user': {'id': user['id'], 'email': user['email']},
+    }), 200
+
+
+@app.get('/api/me')
+def me():
+    if 'user' not in session:
+        return error('Not authenticated.', 401)
+    return jsonify({'success': True, 'user': session['user']})
+
+
+@app.post('/api/signout')
+def signout():
+    session.clear()
+    return jsonify({'success': True, 'message': 'Signed out.'})
+
+
+# ══════════════════════════════════════════════════════════════════
+# Static HTML pages served from Flask
+# ══════════════════════════════════════════════════════════════════
+
+@app.get('/')
+@app.get('/index.html')
+def serve_index():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
+
+
+@app.get('/signin.html')
+def serve_signin():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'signin.html')
+
+
+@app.get('/dashboard.html')
+def serve_dashboard():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'dashboard.html')
 
 
 if __name__ == '__main__':

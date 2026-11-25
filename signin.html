@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShopEase | Sign in</title>
+  <style>
+    :root {
+      --ink:#182230; --muted:#667085; --brand:#2855c5; --brand-dark:#1d429f;
+      --danger:#b42318; --danger-bg:#fff1f0; --success:#067647; --success-bg:#ecfdf3;
+      --info-bg:#eef4ff; --radius:16px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink);
+      background:linear-gradient(145deg,#f4f7ff 0%,#f9fbff 45%,#eef3fa 100%); }
+    button, input { font:inherit; }
+    .topbar { height:72px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 clamp(20px,5vw,72px); background:rgba(255,255,255,.88);
+      border-bottom:1px solid #e7ebf2; }
+    .brand { display:flex; align-items:center; gap:11px; font-weight:800; font-size:21px; }
+    .brand-mark { width:35px; height:35px; display:grid; place-items:center; color:#fff;
+      background:var(--brand); border-radius:11px; font-weight:900; }
+    main { width:min(100% - 32px, 460px); margin:56px auto 56px; }
+    .card { background:#fff; border:1px solid #e5eaf1; border-radius:var(--radius);
+      padding:clamp(22px,4vw,36px); box-shadow:0 18px 50px rgba(27,48,84,.07); }
+    h1 { margin:0 0 6px; font-size:28px; letter-spacing:-.8px; }
+    .intro { margin:0 0 24px; color:var(--muted); font-size:14px; line-height:1.55; }
+    .field { margin-bottom:16px; }
+    label { display:block; margin-bottom:7px; font-weight:700; font-size:12px; color:#344054; }
+    .required { color:var(--danger); }
+    input[type="email"], input[type="password"], input[type="text"] {
+      width:100%; min-height:45px; border:1px solid #cfd7e3; border-radius:9px;
+      padding:10px 12px; background:#fff; outline:none; transition:border-color .15s, box-shadow .15s;
+    }
+    input:focus { border-color:var(--brand); box-shadow:0 0 0 3px rgba(40,85,197,.12); }
+    input.invalid { border-color:var(--danger); background:#fffafa; }
+    .password-wrap { position:relative; }
+    .password-wrap input { padding-right:67px; }
+    .toggle-password { position:absolute; right:8px; top:8px; border:0; background:transparent;
+      color:var(--brand); font-weight:700; font-size:11px; cursor:pointer; padding:7px; }
+    .error { min-height:15px; margin:5px 0 0; color:var(--danger); font-size:11px; }
+    .status { display:none; margin:14px 0 0; padding:12px 14px; border-radius:9px;
+      font-size:12px; line-height:1.5; }
+    .status.error-status { display:block; color:var(--danger); background:var(--danger-bg);
+      border:1px solid #fecdca; }
+    .status.warn-status { display:block; color:#b45309; background:#fffaeb;
+      border:1px solid #fedf89; }
+    .status.success-status { display:block; color:var(--success); background:var(--success-bg);
+      border:1px solid #abefc6; }
+    .primary { width:100%; min-height:47px; margin-top:18px; border:0; border-radius:9px;
+      color:#fff; background:var(--brand); font-weight:800; cursor:pointer;
+      box-shadow:0 7px 15px rgba(40,85,197,.17); transition:background .15s; }
+    .primary:hover { background:var(--brand-dark); }
+    .primary:disabled { opacity:.65; cursor:wait; }
+    .form-note { margin:14px 0 0; text-align:center; color:var(--muted); font-size:12px; }
+    a { color:var(--brand); text-decoration:none; font-weight:700; }
+    a:hover { text-decoration:underline; }
+    .demo-box { margin-top:20px; padding:12px 14px; border-radius:11px;
+      background:var(--info-bg); color:#314b7d; font-size:11px; line-height:1.55; }
+    .demo-box strong { display:block; margin-bottom:4px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">S</span><span>ShopEase</span></div>
+    <div style="color:var(--muted); font-size:13px;">A simple, secure shopping experience</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h1>Sign in to ShopEase</h1>
+      <p class="intro">Access your account and orders.</p>
+
+      <form id="signin-form" novalidate>
+        <div class="field">
+          <label for="email">Email address <span class="required">*</span></label>
+          <input id="email" name="email" type="email" autocomplete="username"
+                 placeholder="you@example.com" maxlength="100" />
+          <p class="error" id="email-error"></p>
+        </div>
+
+        <div class="field">
+          <label for="password">Password <span class="required">*</span></label>
+          <div class="password-wrap">
+            <input id="password" name="password" type="password"
+                   autocomplete="current-password" placeholder="Enter your password" maxlength="128" />
+            <button class="toggle-password" type="button" id="toggle-pw">Show</button>
+          </div>
+          <p class="error" id="password-error"></p>
+        </div>
+
+        <button class="primary" id="submit-btn" type="submit">Sign In</button>
+        <p class="form-note">New to ShopEase? <a href="index.html">Create an account</a></p>
+        <div id="form-status" class="status" role="status" aria-live="polite"></div>
+      </form>
+
+      <div class="demo-box">
+        <strong>Demo credentials</strong>
+        asha.demo@example.com / Test@1234 — register this account via US-001 and verify the OTP before signing in.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const API_BASE = (window.SHOPEASE_API_BASE || 'http://127.0.0.1:5000').replace(/\/+$/, '');
+      const $ = (id) => document.getElementById(id);
+      const form = $('signin-form');
+      let isSubmitting = false;
+
+      function setError(fieldId, message) {
+        const input = $(fieldId);
+        const err   = $(fieldId + '-error');
+        if (input) input.classList.toggle('invalid', Boolean(message));
+        if (err)   err.textContent = message || '';
+      }
+      function clearErrors() {
+        setError('email', '');
+        setError('password', '');
+        $('form-status').className = 'status';
+        $('form-status').textContent = '';
+      }
+      function showStatus(message, type) {
+        const el = $('form-status');
+        el.textContent = message;
+        el.className = 'status ' + (
+          type === 'success' ? 'success-status' :
+          type === 'warn'    ? 'warn-status'    : 'error-status'
+        );
+      }
+      function validate() {
+        clearErrors();
+        let ok = true;
+        const email = $('email').value.trim();
+        const password = $('password').value;
+
+        if (!email) { setError('email', 'Email is required.'); ok = false; }
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setError('email', 'Enter a valid email address.'); ok = false;
+        }
+        if (!password) { setError('password', 'Password is required.'); ok = false; }
+        return ok;
+      }
+
+      $('toggle-pw').addEventListener('click', () => {
+        const input = $('password');
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        $('toggle-pw').textContent = show ? 'Hide' : 'Show';
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (isSubmitting) return;
+        if (!validate()) return;
+
+        isSubmitting = true;
+        const btn = $('submit-btn');
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Signing in…';
+
+        try {
+          const res = await fetch(API_BASE + '/api/signin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              email: $('email').value.trim(),
+              password: $('password').value
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (res.ok && data.success) {
+            showStatus('Signed in successfully. Redirecting…', 'success');
+            setTimeout(() => { window.location.href = data.redirectTo || 'dashboard.html'; }, 700);
+            return;
+          }
+
+          if (data.errors) {
+            if (data.errors.email)    setError('email', data.errors.email);
+            if (data.errors.password) setError('password', data.errors.password);
+            showStatus('Please fix the highlighted fields.', 'error');
+            return;
+          }
+
+          if (res.status === 423) {
+            showStatus(data.message || 'Account temporarily locked.', 'warn');
+            return;
+          }
+
+          if (typeof data.attemptsLeft === 'number') {
+            showStatus(`${data.message} (${data.attemptsLeft} attempt(s) left before lockout.)`, 'error');
+          } else {
+            showStatus(data.message || 'Invalid email or password.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showStatus('Could not reach the sign-in API at ' + API_BASE + '.', 'error');
+        } finally {
+          isSubmitting = false;
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+
+      $('email').addEventListener('input',    () => setError('email', ''));
+      $('password').addEventListener('input', () => setError('password', ''));
+    })();
+  </script>
+</body>
+</html>

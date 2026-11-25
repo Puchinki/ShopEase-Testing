@@ -1,11 +1,78 @@
 {
-  "info": {"name": "ShopEase US-001 Registration API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
-  "variable": [{"key": "baseUrl", "value": "http://127.0.0.1:5000"}, {"key": "userId", "value": "1"}],
+  "info": {
+    "name": "ShopEase US-001 + US-002 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:5000" },
+    { "key": "userId", "value": "1" }
+  ],
   "item": [
-    {"name": "Health Check", "request": {"method": "GET", "url": "{{baseUrl}}/api/health"}},
-    {"name": "Register Customer", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"firstName\": \"Asha\",\n  \"lastName\": \"Sharma\",\n  \"dob\": \"1995-04-15\",\n  \"email\": \"asha.demo@example.com\",\n  \"mobile\": \"9876543210\",\n  \"password\": \"Test@1234\",\n  \"confirmPassword\": \"Test@1234\",\n  \"termsAccepted\": true\n}"}, "url": "{{baseUrl}}/api/register"}, "event": [{"listen": "test", "script": {"exec": ["if (pm.response.code === 201) {", "  pm.collectionVariables.set('userId', pm.response.json().userId);", "}"]}}]},
-    {"name": "Verify OTP", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"userId\": {{userId}},\n  \"otp\": \"123456\"\n}"}, "url": "{{baseUrl}}/api/verify-otp"}},
-    {"name": "Get User (Test Helper)", "request": {"method": "GET", "url": "{{baseUrl}}/api/users/{{userId}}"}},
-    {"name": "Reset Demo Data (Test Helper)", "request": {"method": "POST", "url": "{{baseUrl}}/api/test/reset"}}
+    {
+      "name": "Health Check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/health" }
+    },
+    {
+      "name": "US-001 Register Customer",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Asha\",\n  \"lastName\": \"Sharma\",\n  \"dob\": \"1995-04-15\",\n  \"email\": \"asha.demo@example.com\",\n  \"mobile\": \"9876543210\",\n  \"password\": \"Test@1234\",\n  \"confirmPassword\": \"Test@1234\",\n  \"termsAccepted\": true\n}"
+        },
+        "url": "{{baseUrl}}/api/register"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "exec": [
+            "if (pm.response.code === 201) {",
+            "  pm.collectionVariables.set('userId', pm.response.json().userId);",
+            "}"
+          ]
+        }
+      }]
+    },
+    {
+      "name": "US-001 Verify OTP",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": {{userId}},\n  \"otp\": \"123456\"\n}"
+        },
+        "url": "{{baseUrl}}/api/verify-otp"
+      }
+    },
+    {
+      "name": "US-001 Get User (Test Helper)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/users/{{userId}}" }
+    },
+    {
+      "name": "US-001 Reset Demo Data (Test Helper)",
+      "request": { "method": "POST", "url": "{{baseUrl}}/api/test/reset" }
+    },
+    {
+      "name": "US-002 Sign In",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"asha.demo@example.com\",\n  \"password\": \"Test@1234\"\n}"
+        },
+        "url": "{{baseUrl}}/api/signin"
+      }
+    },
+    {
+      "name": "US-002 Current User (Session)",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/me" }
+    },
+    {
+      "name": "US-002 Sign Out",
+      "request": { "method": "POST", "url": "{{baseUrl}}/api/signout" }
+    }
   ]
 }
